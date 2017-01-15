@@ -63,6 +63,17 @@ Switching to simple automute (no local playback)"
 ERRORMSG3="ERROR: No music found in the specified location. Please check the settings. \
 Switching to simple automute (no local playback)"
 
+## ARECORD stuff
+# -c = channels
+# -f = sample format
+# -r = sampling rate
+# -t = save file type
+# -D = capture device (must be created beforehand in ~/.asoundrc)
+# see: https://wiki.archlinux.org/index.php/PulseAudio/Examples#ALSA_monitor_source
+ARECORD=$( which arecord )
+ARECORD_SAVE_FMT="wav"
+ARECORD_FLAGS="-c 2 -f S16_LE -r 44100 -t $ARECORD_SAVE_FMT -D pulse_monitor"
+
 ## FUNCTIONS
 
 debuginfo(){
@@ -78,6 +89,42 @@ notify_send(){
 
 print_horiz_line(){
     printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+}
+
+dump_song()
+{
+    if [[ "$DUMP" = "0" ]]; then
+        return
+    fi
+
+    if [[ "$1" = "stop" ]]; then
+        killall -9 $ARECORD
+        echo "Stopping any registration..."
+        return
+    fi
+
+    echo "Starting new registration ..."
+    DBUS_OUTPUT=$( query_spotify_dbus )
+
+    # get track data from the DBUS interface
+    SONG_NAME=$( echo "$DBUS_OUTPUT" | grep "\"xesam:title\"" -A 1 | grep variant | \
+                       cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)
+    ALBUM_NAME=$( echo "$DBUS_OUTPUT" | grep "\"xesam:album\"" -A 1 | grep variant | \
+                        cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)
+    TRACK_NO=$( echo "$DBUS_OUTPUT" | grep "\"xesam:trackNumber\"" -A 1 | grep variant | \
+                      cut -d " " -f 2- | rev | cut -d " " -f 1 | rev | xargs printf "%02d\n")
+    ARTIST_NAME=$(echo "$DBUS_OUTPUT" | grep "\"xesam:artist\"" -A 2 | grep -v xesam | grep string | \
+                         cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)
+    SONG_LEN=$( echo "$DBUS_OUTPUT" | grep "\"mpris:length\"" -A 1 | grep variant | \
+                      cut -d " " -f 2- | rev | cut -d " " -f 1 | rev )
+    # convert ms in secs
+    SONG_LEN=$( echo "$SONG_LEN/1000000" | bc )
+
+    ITEM_PATH="$CUSTOM_MUSIC/$ARTIST_NAME/$ALBUM_NAME"
+    FULL_ITEM_PATH="$ITEM_PATH/$TRACK_NO $SONG_NAME.flac"
+    mkdir -p "$ITEM_PATH"
+    dump_song stop
+    echo $ARECORD -d $SONG_LEN $ARECORD_FLAGS | flac - -f --best -s -o "$FULL_ITEM_PATH" &
 }
 
 read_config(){
@@ -276,6 +323,16 @@ stop_localplayback(){
     kill -s TERM "$PLAYER_PID" 2> /dev/null
 }
 
+query_spotify_dbus(){
+    SVC="spotify" # "vlc", "spotify", etc.
+    dbus-send --print-reply --session \
+              --dest=org.mpris.MediaPlayer2.$SVC \
+              /org/mpris/MediaPlayer2 \
+              org.freedesktop.DBus.Properties.Get \
+              string:'org.mpris.MediaPlayer2.Player' \
+              string:'Metadata'
+}
+
 spotify_dbus(){
     dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 \
     org.mpris.MediaPlayer2.Player."$1" > /dev/null 2>&1
@@ -397,6 +454,7 @@ automute_simple(){
       then
           echo "## Initial run ##"
           unmute
+          dump_song
           INITIALRUN="0"
 
     # no ad, regular track
@@ -404,23 +462,26 @@ automute_simple(){
      "$INITIALRUN" = "0" ]]
       then
           echo "## Regular track ##"
+          dump_song
 
     # no ad, regular pause
     elif [[ "$AD" = "0" && "$PAUSED" = "1" && "$ADMUTE" = "0" &&  \
      "$INITIALRUN" = "0" ]]
       then
           echo "## Paused by User ##"
+          dump_song stop
 
     # ad finished
     elif [[ "$AD" = "0" && "$PAUSED" = "0"  && "$ADMUTE" = "1" ]]
       then
           unmute
+          dump_song
 
     # ad started
     elif [[ "$AD" = "1" && "$PAUSED" = "0"  && "$ADMUTE" = "0" ]]
       then
           mute
-
+          dump_song stop
     fi
 }
 
@@ -519,5 +580,8 @@ while read -r XPROPOUTPUT; do
 done < <(xprop -spy -name "$WMTITLE" WM_NAME) # we use process substitution instead of piping
                                               # to avoid executing the loop in a subshell
 echo "Spotify not active. Exiting."
+
+echo "Killing recording sessions (if any)"
+dump_song stop
 
 exit 0

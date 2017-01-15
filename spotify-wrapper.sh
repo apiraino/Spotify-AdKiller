@@ -84,7 +84,12 @@ DEBUG="0"
 # - "1" to enable
 # - "0" to disable
 # -> Will make the CLI output more verbose and write a logfile
-#    to "$HOME/.Spotify-AdKiller.log"'
+#    to "$HOME/.Spotify-AdKiller.log
+
+DUMP="1"
+# Whether to save soundcard output on disk
+# - "1" to enable
+# - "0" to disable"'
 
 ## CLI MESSAGES
 
