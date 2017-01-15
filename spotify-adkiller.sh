@@ -237,18 +237,17 @@ setup_vars(){
 
 get_state(){
 
-    DBUSOUTPUT="$(dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify / \
-    org.freedesktop.MediaPlayer2.GetMetadata)"
+    DBUS_OUTPUT=$( query_spotify_dbus )
+    debuginfo "XPROP_DEBUG: $XPROP_OUTPUT"
+    debuginfo "DBUS_DEBUG:  $DBUS_OUTPUT"
 
-    debuginfo "XPROP_DEBUG: $XPROPOUTPUT"
-    debuginfo "DBUS_DEBUG:  $DBUSOUTPUT"
-    
     # get track data from xprop and the DBUS interface
-    XPROP_TRACKDATA="$(echo "$XPROPOUTPUT" | cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)"
-    DBUS_TRACKDATA="$(echo "$DBUSOUTPUT" | grep xesam:title -A 1 | grep variant | \
+    XPROP_TRACKDATA="$(echo "$XPROP_OUTPUT" | cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)"
+    DBUS_TRACKDATA="$(echo "$DBUS_OUTPUT" | grep "\"xesam:title\"" -A 1 | grep variant | \
     cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)"
     # `cut | rev | cut | rev` gets string between first and last double-quotes
     # TODO: find a more elegant way to do this
+    # There is none. Well, use "pydbus"
 
     echo "XPROP:    $XPROP_TRACKDATA"
     echo "DBUS:     $DBUS_TRACKDATA"
@@ -569,7 +568,7 @@ setup_vars
 
 #while read -r XPROP_TRACKDATA DBUS_TRACKDATA; do # DEBUG
 
-while read -r XPROPOUTPUT; do
+while read -r XPROP_OUTPUT; do
 
     get_state
 
