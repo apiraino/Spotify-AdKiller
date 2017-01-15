@@ -38,7 +38,7 @@
 # settings
 
 ADKILLER="spotify-adkiller.sh"
-WMTITLE="Spotify - Linux Preview"
+WMTITLE="Spotify"
 LOGFILE="$HOME/.Spotify-AdKiller.log"
 
 # initialization
@@ -118,7 +118,7 @@ spotify_launch(){
             exit 1
       fi
       echo "## Waiting for Spotify ##"
-      xprop -name "$WMTITLE" WM_ICON_NAME > /dev/null 2>&1
+      xprop -name "$WMTITLE" WM_NAME > /dev/null 2>&1
       if [[ "$?" == "0" ]]; then
         break
       fi

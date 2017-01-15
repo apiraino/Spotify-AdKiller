@@ -41,7 +41,7 @@ CONFIG_FILE="$CONFIG_PATH/Spotify-AdKiller.cfg"
 
 # settings
 
-WMTITLE="Spotify - Linux Preview"
+WMTITLE="Spotify"
 BINARY="spotify"
 ALERT="/usr/share/sounds/freedesktop/stereo/complete.oga"
 
@@ -99,7 +99,7 @@ set_musicdir(){
     else
         LOCAL_MUSIC="$CUSTOM_MUSIC"
     fi
-    
+
     echo "## Music path: $LOCAL_MUSIC ##"
 
     if [[ -z "$(find "$LOCAL_MUSIC" -iname "*.mp3" 2> /dev/null )" ]]; then
@@ -118,7 +118,7 @@ set_alert(){
       ALERT="$CUSTOM_ALERT"
     else
       ALERT=""
-    fi    
+    fi
 }
 
 set_player(){
@@ -239,7 +239,7 @@ get_state(){
           echo "LOCAL:    No"
           LOCPLAY="0"
     fi
-    
+
     debuginfo "admute: $ADMUTE; pausesignal: $PAUSESIGNAL; adfinished: $ADFINISHED"
 }
 
@@ -342,7 +342,7 @@ automute_continuous(){
           echo "## Paused during ad by User ##"
           notify_send "Ad is still on. Please wait for a moment."
           spotify_dbus PlayPause
-    
+
     # ad finished, user unpaused/switched track
     elif [[ "$AD" = "0" && "$PAUSED" = "0"  && "$ADMUTE" = "1" &&  \
       "$LOCPLAY" = "1" && "$PAUSESIGNAL" = "1" && "$ADFINISHED" = "1" ]]
@@ -362,7 +362,7 @@ automute_continuous(){
           unmute
           PAUSESIGNAL=0
           ADFINISHED=0
-          
+
     # ad still on, local playback finished
     elif [[ "$AD" = "1" && "$PAUSED" = "0"  && "$ADMUTE" = "1" &&  \
       "$LOCPLAY" = "0" && "$PAUSESIGNAL" = "0" && "$ADFINISHED" = "0" ]]
@@ -516,9 +516,8 @@ while read -r XPROPOUTPUT; do
 
     print_horiz_line
 
-done < <(xprop -spy -name "$WMTITLE" WM_ICON_NAME)  # we use process substitution instead of piping
-                                                    # to avoid executing the loop in a subshell
-
+done < <(xprop -spy -name "$WMTITLE" WM_NAME) # we use process substitution instead of piping
+                                              # to avoid executing the loop in a subshell
 echo "Spotify not active. Exiting."
 
 exit 0
