@@ -586,8 +586,8 @@ while read -r XPROP_OUTPUT; do
 
     print_horiz_line
 
-done < <(xprop -spy -name "$WMTITLE" WM_NAME) # we use process substitution instead of piping
-                                              # to avoid executing the loop in a subshell
+done < <(xprop -spy -name "$WMTITLE" _NET_WM_NAME) # we use process substitution instead of piping
+                                                   # to avoid executing the loop in a subshell
 echo "Spotify not active. Exiting."
 
 echo "Killing recording sessions (if any)"
