@@ -37,9 +37,10 @@
 
 # settings
 
-ADKILLER="spotify-adkiller.sh"
+ADKILLER="./spotify-adkiller.sh"
 WMTITLE="Spotify"
 LOGFILE="$HOME/.Spotify-AdKiller.log"
+DNS_BLOCK_LIB=$( pwd )/experimental/dns-block.so
 
 # initialization
 
@@ -107,11 +108,11 @@ read_write_config(){
     if [[ ! -f "$CONFIG_FILE" ]]; then
       echo "$CONFIG_DEFAULT" > "$CONFIG_FILE"
     fi
-    source "$CONFIG_FILE" 
+    source "$CONFIG_FILE"
 }
 
 spotify_launch(){
-    spotify "$@" > /dev/null 2>&1 &
+    LD_PRELOAD=$DNS_BLOCK_LIB spotify "$@" > /dev/null 2>&1 &
     # wait for spotify to launch
     # if spotify not launched after 50 seconds
     # exit script
@@ -139,7 +140,7 @@ adkiller_launch(){
       if [[ "$DEBUG" = "1" ]]; then
         echo "$INFOMSG1"
         notify_send "$INFOMSG1"
-        $ADKILLER > "$LOGFILE" 2> /dev/null &
+        $ADKILLER &> "$LOGFILE" &
       else
         $ADKILLER > /dev/null 2>&1 &
       fi

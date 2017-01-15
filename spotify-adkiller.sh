@@ -74,6 +74,9 @@ ARECORD=$( which arecord )
 ARECORD_SAVE_FMT="wav"
 ARECORD_FLAGS="-c 2 -f S16_LE -r 44100 -t $ARECORD_SAVE_FMT -D pulse_monitor"
 
+## FLAC opts
+FLAC_OPTS="-f --best -s"
+
 ## FUNCTIONS
 
 debuginfo(){
@@ -98,7 +101,7 @@ dump_song()
     fi
 
     if [[ "$1" = "stop" ]]; then
-        killall -9 $ARECORD
+        killall -9 $ARECORD 2>&1
         echo "Stopping any registration..."
         return
     fi
@@ -124,7 +127,8 @@ dump_song()
     FULL_ITEM_PATH="$ITEM_PATH/$TRACK_NO $SONG_NAME.flac"
     mkdir -p "$ITEM_PATH"
     dump_song stop
-    echo $ARECORD -d $SONG_LEN $ARECORD_FLAGS | flac - -f --best -s -o "$FULL_ITEM_PATH" &
+    echo "Recording started ..."
+    $ARECORD -d $SONG_LEN $ARECORD_FLAGS | flac - $FLAC_OPTS -o "$FULL_ITEM_PATH" &
 }
 
 read_config(){
