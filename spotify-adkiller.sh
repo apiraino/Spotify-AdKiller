@@ -110,24 +110,30 @@ dump_song()
     DBUS_OUTPUT=$( query_spotify_dbus )
 
     # get track data from the DBUS interface
-    SONG_NAME=$( echo "$DBUS_OUTPUT" | grep "\"xesam:title\"" -A 1 | grep variant | \
-                       cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)
-    ALBUM_NAME=$( echo "$DBUS_OUTPUT" | grep "\"xesam:album\"" -A 1 | grep variant | \
-                        cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)
     TRACK_NO=$( echo "$DBUS_OUTPUT" | grep "\"xesam:trackNumber\"" -A 1 | grep variant | \
                       cut -d " " -f 2- | rev | cut -d " " -f 1 | rev | xargs printf "%02d\n")
-    ARTIST_NAME=$(echo "$DBUS_OUTPUT" | grep "\"xesam:artist\"" -A 2 | grep -v xesam | grep string | \
-                         cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)
     SONG_LEN=$( echo "$DBUS_OUTPUT" | grep "\"mpris:length\"" -A 1 | grep variant | \
                       cut -d " " -f 2- | rev | cut -d " " -f 1 | rev )
     # convert ms in secs
     SONG_LEN=$( echo "$SONG_LEN/1000000" | bc )
 
+    SONG_NAME=$( echo "$DBUS_OUTPUT" | grep "\"xesam:title\"" -A 1 | grep variant | \
+                       cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)
+    ALBUM_NAME=$( echo "$DBUS_OUTPUT" | grep "\"xesam:album\"" -A 1 | grep variant | \
+                        cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)
+    ARTIST_NAME=$(echo "$DBUS_OUTPUT" | grep "\"xesam:artist\"" -A 2 | grep -v xesam | grep string | \
+                         cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)
+    # these can fail due to UTF-8 encoding
+    if [ -z "$SONG_NAME" ] || [ -z "$ALBUM_NAME" ] || [ -z $ARTIST_NAME ]; then
+        echo "Could not get either song, album or artist name. Bail out."
+        return
+    fi
+
     ITEM_PATH="$CUSTOM_MUSIC/$ARTIST_NAME/$ALBUM_NAME"
     FULL_ITEM_PATH="$ITEM_PATH/$TRACK_NO $SONG_NAME.flac"
     mkdir -p "$ITEM_PATH"
     dump_song stop
-    echo "Recording started ..."
+    echo "Recording started of $FULL_ITEM_PATH ..."
     $ARECORD -d $SONG_LEN $ARECORD_FLAGS | flac - $FLAC_OPTS -o "$FULL_ITEM_PATH" &
 }
 
