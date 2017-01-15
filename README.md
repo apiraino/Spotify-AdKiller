@@ -15,6 +15,7 @@ Utilities used in the script:
   - xprop
   - pacmd
   - notify-send
+  - arecord (part of the ALSA package) if you want to save audio
 
 You will also need to have one of the following audio/media players installed:
 
@@ -24,7 +25,7 @@ You will also need to have one of the following audio/media players installed:
   - mpg321
   - avplay
   - ffplay
-  
+
 Please consult the Settings section below for information on setting a custom audio player.
 
 Install all utilities + VLC on **Ubuntu** with:
@@ -50,13 +51,13 @@ Run the provided installer:
 
 **Troubleshooting**
 
-- if you've installed Spotify from any source other than the official repository please make sure that the `spotify` executable is in your `PATH`. 
- 
+- if you've installed Spotify from any source other than the official repository please make sure that the `spotify` executable is in your `PATH`.
+
     You can create a symbolic link, if necessary (e.g. linking `my-spotify` to `spotify` if you are using the user installation of [spotify-make](https://github.com/leamas/spotify-make)).
 
 - the installer script will install Spotify-AdKiller to `$HOME/bin`, which should be recognized by Ubuntu and openSUSE
- 
-- if `$HOME/bin` didn't exist before, a relog might be necessary to complete the installation 
+
+- if `$HOME/bin` didn't exist before, a relog might be necessary to complete the installation
 
     Technical explanation: Ubuntu automatically adds `$HOME/bin` to your PATH if it exists when you log in. Relogging reloads `$HOME/.profile` and updates your PATH.
 
@@ -98,7 +99,7 @@ The following settings control local music playback during ads:
 - `CUSTOM_PLAYER`: local music player to use; chosen automatically by default
 - `CUSTOM_VOLUME`: volume of local playback; set to 100 by default
 - `CUSTOM_MUSIC`: local track to play / local music directory to choose tracks from; set to XDG standard music directory by default (e.g. `$HOME/Music`)
-- `CUSTOM_ALERT`: audio alert to play when switching to local playback; XDG standard 'bell' sound by default; set to `none` to disable 
+- `CUSTOM_ALERT`: audio alert to play when switching to local playback; XDG standard 'bell' sound by default; set to `none` to disable
 
 **Debug setting**
 
@@ -113,6 +114,9 @@ If, for some reason, Spotify does remain muted you can use the following command
 ```bash
 for i in $(LC_ALL=C pactl list | grep -E '(^Sink Input)|(media.name = \"Spotify\"$)' | cut -d \# -f2 | grep -v Spotify); do pactl set-sink-input-mute "$i" no; done
 ```
+
+Also ensure you have your locale set to UTF-8 otherwise the ad check can fail on songs with UTF-8 chars. Check with the command `locale` and ensure that everything (included LC_ALL) is set to a charset `something.UTF-8` (example `en_US.UTF-8`).
+
 
 ### Similar projects
 
