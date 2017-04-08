@@ -74,6 +74,9 @@ ARECORD=$( which arecord )
 ARECORD_SAVE_FMT="wav"
 ARECORD_FLAGS="-c 2 -f S16_LE -r 44100 -t $ARECORD_SAVE_FMT -D pulse_monitor"
 
+# FLAC options
+FLAC_OPTS="-f --best -s"
+
 ## FUNCTIONS
 
 debuginfo(){
@@ -107,12 +110,12 @@ dump_song()
     DBUS_OUTPUT=$( query_spotify_dbus )
 
     # get track data from the DBUS interface
-    TRACK_NO=$( printf "%d" "$DBUS_OUTPUT" | grep "\"xesam:trackNumber\"" -A 1 | grep variant | \
+    TRACK_NO=$( printf "%s" "$DBUS_OUTPUT" | grep "\"xesam:trackNumber\"" -A 1 | grep variant | \
                       cut -d " " -f 2- | rev | cut -d " " -f 1 | rev | xargs printf "%02d\n")
-    SONG_LEN=$( printf "%d" "$DBUS_OUTPUT" | grep "\"mpris:length\"" -A 1 | grep variant | \
+    SONG_LEN=$( echo "$DBUS_OUTPUT" | grep "\"mpris:length\"" -A 1 | grep variant | \
                       cut -d " " -f 2- | rev | cut -d " " -f 1 | rev )
     # convert ms in secs
-    SONG_LEN=$( printf "%d" "$SONG_LEN/1000000" | bc )
+    SONG_LEN=$( echo "$SONG_LEN/1000000" | bc )
 
     SONG_NAME=$( printf "%s" "$DBUS_OUTPUT" | grep "\"xesam:title\"" -A 1 | grep variant | \
                        cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)
@@ -131,7 +134,7 @@ dump_song()
     mkdir -p "$ITEM_PATH"
     dump_song stop
     debuginfo "Recording started of $FULL_ITEM_PATH ..."
-    $ARECORD -d "$SONG_LEN" "$ARECORD_FLAGS" | flac - -f --best -s -o "$FULL_ITEM_PATH" &
+    $ARECORD -d $SONG_LEN $ARECORD_FLAGS | flac - $FLAC_OPTS -o "$FULL_ITEM_PATH" &
 }
 
 read_config(){
