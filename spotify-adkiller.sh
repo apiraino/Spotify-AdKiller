@@ -74,9 +74,6 @@ ARECORD=$( which arecord )
 ARECORD_SAVE_FMT="wav"
 ARECORD_FLAGS="-c 2 -f S16_LE -r 44100 -t $ARECORD_SAVE_FMT -D pulse_monitor"
 
-## FLAC opts
-FLAC_OPTS="-f --best -s"
-
 ## FUNCTIONS
 
 debuginfo(){
@@ -110,22 +107,22 @@ dump_song()
     DBUS_OUTPUT=$( query_spotify_dbus )
 
     # get track data from the DBUS interface
-    TRACK_NO=$( echo "$DBUS_OUTPUT" | grep "\"xesam:trackNumber\"" -A 1 | grep variant | \
+    TRACK_NO=$( printf "%d" "$DBUS_OUTPUT" | grep "\"xesam:trackNumber\"" -A 1 | grep variant | \
                       cut -d " " -f 2- | rev | cut -d " " -f 1 | rev | xargs printf "%02d\n")
-    SONG_LEN=$( echo "$DBUS_OUTPUT" | grep "\"mpris:length\"" -A 1 | grep variant | \
+    SONG_LEN=$( printf "%d" "$DBUS_OUTPUT" | grep "\"mpris:length\"" -A 1 | grep variant | \
                       cut -d " " -f 2- | rev | cut -d " " -f 1 | rev )
     # convert ms in secs
-    SONG_LEN=$( echo "$SONG_LEN/1000000" | bc )
+    SONG_LEN=$( printf "%d" "$SONG_LEN/1000000" | bc )
 
-    SONG_NAME=$( echo "$DBUS_OUTPUT" | grep "\"xesam:title\"" -A 1 | grep variant | \
+    SONG_NAME=$( printf "%s" "$DBUS_OUTPUT" | grep "\"xesam:title\"" -A 1 | grep variant | \
                        cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)
-    ALBUM_NAME=$( echo "$DBUS_OUTPUT" | grep "\"xesam:album\"" -A 1 | grep variant | \
+    ALBUM_NAME=$( printf "%s" "$DBUS_OUTPUT" | grep "\"xesam:album\"" -A 1 | grep variant | \
                         cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)
-    ARTIST_NAME=$(echo "$DBUS_OUTPUT" | grep "\"xesam:artist\"" -A 2 | grep -v xesam | grep string | \
+    ARTIST_NAME=$( printf "%s" "$DBUS_OUTPUT" | grep "\"xesam:artist\"" -A 2 | grep -v xesam | grep string | \
                          cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)
     # these can fail due to UTF-8 encoding
     if [ -z "$SONG_NAME" ] || [ -z "$ALBUM_NAME" ] || [ -z $ARTIST_NAME ]; then
-        echo "Could not get either song, album or artist name. Bail out."
+        debuginfo "Could not get either song, album or artist name. Bail out."
         return
     fi
 
@@ -133,8 +130,8 @@ dump_song()
     FULL_ITEM_PATH="$ITEM_PATH/$TRACK_NO $SONG_NAME.flac"
     mkdir -p "$ITEM_PATH"
     dump_song stop
-    echo "Recording started of $FULL_ITEM_PATH ..."
-    $ARECORD -d $SONG_LEN $ARECORD_FLAGS | flac - $FLAC_OPTS -o "$FULL_ITEM_PATH" &
+    debuginfo "Recording started of $FULL_ITEM_PATH ..."
+    $ARECORD -d "$SONG_LEN" "$ARECORD_FLAGS" | flac - -f --best -s -o "$FULL_ITEM_PATH" &
 }
 
 read_config(){
@@ -252,16 +249,15 @@ get_state(){
     debuginfo "DBUS_DEBUG:  $DBUS_OUTPUT"
 
     # get track data from xprop and the DBUS interface
-    XPROP_TRACKDATA="$(echo "$XPROP_OUTPUT" | cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)"
-    DBUS_TRACKDATA="$(echo "$DBUS_OUTPUT" | grep "\"xesam:title\"" -A 1 | grep variant | \
+    XPROP_TRACKDATA="$(printf "$XPROP_OUTPUT" | cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)"
+    DBUS_TRACKDATA="$(printf "$DBUS_OUTPUT" | grep "\"xesam:title\"" -A 1 | grep variant | \
     cut -d\" -f 2- | rev | cut -d\" -f 2- | rev)"
     # `cut | rev | cut | rev` gets string between first and last double-quotes
     # TODO: find a more elegant way to do this
     # There is none. Well, use "pydbus"
 
-    echo "XPROP:    $XPROP_TRACKDATA"
-    echo "DBUS:     $DBUS_TRACKDATA"
-
+    debuginfo "XPROP:    $XPROP_TRACKDATA"
+    debuginfo "DBUS:     $DBUS_TRACKDATA"
     # check if track paused
     if [[ "$XPROP_TRACKDATA" = "Spotify" ]]
       then
@@ -274,26 +270,26 @@ get_state(){
 
     # check if track is an ad
     if [[ ! "$XPROP_TRACKDATA" == *"$DBUS_TRACKDATA"* && "$PAUSED" = "0" ]]
-      then
-          echo "AD:       Yes"
-          AD="1"
+    then
+        echo "AD:       Yes"
+        AD="1"
     elif [[ ! "$XPROP_TRACKDATA" == *"$DBUS_TRACKDATA"* && "$PAUSED" = "1" ]]
-      then
-          echo "AD:       Can't say"
-          AD="0"
-      else
-          echo "AD:       No"
-          AD="0"
+    then
+        echo "AD:       Can't say"
+        AD="0"
+    else
+        echo "AD:       No"
+        AD="0"
     fi
 
     # check if local player running
     if ps -p "$ALTPID" > /dev/null 2>&1
-      then
-          echo "LOCAL:    Yes"
-          LOCPLAY="1"
-      else
-          echo "LOCAL:    No"
-          LOCPLAY="0"
+    then
+        echo "LOCAL:    Yes"
+        LOCPLAY="1"
+    else
+        echo "LOCAL:    No"
+        LOCPLAY="0"
     fi
 
     debuginfo "admute: $ADMUTE; pausesignal: $PAUSESIGNAL; adfinished: $ADFINISHED"
@@ -458,39 +454,36 @@ automute_continuous(){
 
 automute_simple(){
     # no ad, first track
-    if [[ "$AD" = "0" && "$PAUSED" = "0" && "$ADMUTE" = "0" &&  \
-     "$INITIALRUN" = "1" ]]
-      then
-          echo "## Initial run ##"
-          unmute
-          dump_song
-          INITIALRUN="0"
+    if [[ "$AD" = "0" && "$PAUSED" = "0" && "$ADMUTE" = "0" && "$INITIALRUN" = "1" ]]
+    then
+        echo "## Initial run ##"
+        unmute
+        dump_song
+        INITIALRUN="0"
 
     # no ad, regular track
-    elif [[ "$AD" = "0" && "$PAUSED" = "0" && "$ADMUTE" = "0" &&  \
-     "$INITIALRUN" = "0" ]]
-      then
-          echo "## Regular track ##"
-          dump_song
+    elif [[ "$AD" = "0" && "$PAUSED" = "0" && "$ADMUTE" = "0" && "$INITIALRUN" = "0" ]]
+    then
+        echo "## Regular track ##"
+        dump_song
 
     # no ad, regular pause
-    elif [[ "$AD" = "0" && "$PAUSED" = "1" && "$ADMUTE" = "0" &&  \
-     "$INITIALRUN" = "0" ]]
-      then
-          echo "## Paused by User ##"
-          dump_song stop
+    elif [[ "$AD" = "0" && "$PAUSED" = "1" && "$ADMUTE" = "0" && "$INITIALRUN" = "0" ]]
+    then
+        echo "## Paused by User ##"
+        dump_song stop
 
     # ad finished
     elif [[ "$AD" = "0" && "$PAUSED" = "0"  && "$ADMUTE" = "1" ]]
-      then
-          unmute
-          dump_song
+    then
+        unmute
+        dump_song
 
     # ad started
     elif [[ "$AD" = "1" && "$PAUSED" = "0"  && "$ADMUTE" = "0" ]]
-      then
-          mute
-          dump_song stop
+    then
+        mute
+        dump_song stop
     fi
 }
 
